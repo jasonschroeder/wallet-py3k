@@ -4,9 +4,8 @@ import decimal
 import hashlib
 from io import BytesIO
 import json
-import subprocess
 import zipfile
-
+from sign import PKCS7Signer
 
 class Alignment:
     LEFT = 'PKTextAlignmentLeft'
@@ -319,34 +318,8 @@ class Pass(object):
     # Creates a signature and saves it
     def _createSignature(self, manifest, certificate, key,
                          wwdr_certificate, password):
-        openssl_cmd = [
-            'openssl',
-            'smime',
-            '-binary',
-            '-sign',
-            '-certfile',
-            wwdr_certificate,
-            '-signer',
-            certificate,
-            '-inkey',
-            key,
-            '-outform',
-            'DER',
-            '-passin',
-            'pass:{}'.format(password),
-        ]
-        process = subprocess.Popen(
-            openssl_cmd,
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stdin=subprocess.PIPE,
-        )
-        process.stdin.write(manifest)
-        der, error = process.communicate()
-        if process.returncode != 0:
-            raise Exception(error)
-
-        return der
+        signer = PKCS7Signer(certificate, key, wwdr_certificate, password)
+        return signer.sign(manifest)
 
     # Creates .pkpass (zip archive)
     def _createZip(self, pass_json, manifest, signature, zip_file=None):
